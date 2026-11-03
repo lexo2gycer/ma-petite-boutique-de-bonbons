@@ -325,6 +325,10 @@ ul {
   border-bottom: none;
 }
 
+/* ==========================================
+   ZONE DES OPÉRATIONS POSÉES
+========================================== */
+
 .calculation-work,
 #invoice-work,
 #change-work {
@@ -334,7 +338,158 @@ ul {
   background: #fff5fa;
   border: 1px dashed #e7a1c1;
   border-radius: 16px;
+  overflow-x: auto;
 }
+
+.math-sheet {
+  width: 100%;
+  min-width: 230px;
+}
+
+.math-caption {
+  margin-bottom: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.math-grid {
+  --cell-size: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.math-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell-size));
+  justify-content: end;
+  gap: 3px;
+  width: max-content;
+}
+
+.math-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  color: var(--ink);
+  font-size: 23px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.carry-row {
+  margin-bottom: 5px;
+}
+
+.carry-row .math-cell {
+  height: 35px;
+}
+
+.carry-input,
+.result-input {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1.5px solid #eadde5;
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  font-family: 'Nunito', sans-serif;
+  font-size: 19px;
+  font-weight: 900;
+  text-align: center;
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.carry-input::-webkit-inner-spin-button,
+.carry-input::-webkit-outer-spin-button,
+.result-input::-webkit-inner-spin-button,
+.result-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.carry-input:focus,
+.result-input:focus {
+  border-color: var(--pink-dark);
+  box-shadow: 0 0 0 3px rgba(200, 92, 145, 0.12);
+}
+
+.carry-empty .carry-input {
+  background: #fffafd;
+}
+
+.carry-needed .carry-input {
+  border-color: #e7a1c1;
+  background: #fff;
+}
+
+.number-row {
+  min-height: 39px;
+}
+
+.multiplier-row {
+  margin-top: 1px;
+}
+
+.math-rule {
+  width: max-content;
+  height: 2px;
+  background: var(--ink);
+  margin: 7px 0 7px auto;
+  width: calc(var(--cols) * var(--cell-size) + (var(--cols) - 1) * 3px);
+}
+
+.answer-row .math-cell {
+  height: 43px;
+}
+
+.result-input {
+  width: 38px;
+  height: 38px;
+  border-color: #e7a1c1;
+  background: white;
+}
+
+.decimal-before {
+  position: relative;
+}
+
+.decimal-before::before {
+  content: ",";
+  position: absolute;
+  left: -5px;
+  bottom: 1px;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 900;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.math-decimal-note {
+  margin: 18px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.math-cell input.wrong {
+  border-color: var(--red);
+  background: #fff0f2;
+}
+
+/* ==========================================
+   RETOURS ET MESSAGES
+========================================== */
 
 .feedback {
   min-height: 28px;
@@ -350,6 +505,10 @@ ul {
 .feedback.error {
   color: var(--red);
 }
+
+/* ==========================================
+   PORTE-MONNAIE
+========================================== */
 
 .money-grid {
   display: grid;
@@ -380,6 +539,10 @@ ul {
   text-align: center;
   margin: 15px 0;
 }
+
+/* ==========================================
+   RÉSULTAT ET BILAN
+========================================== */
 
 .result-card {
   text-align: center;
@@ -414,6 +577,10 @@ footer {
   font-size: 12px;
 }
 
+/* ==========================================
+   ADAPTATION AUX ÉCRANS
+========================================== */
+
 @media (min-width: 600px) {
   .app {
     padding: 25px;
@@ -428,7 +595,7 @@ footer {
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 400px) {
   .app {
     padding: 11px;
   }
@@ -443,5 +610,23 @@ footer {
 
   .product-card {
     padding: 9px;
+  }
+
+  .math-grid {
+    --cell-size: 38px;
+  }
+
+  .math-cell {
+    font-size: 21px;
+  }
+
+  .carry-input {
+    width: 33px;
+    height: 33px;
+  }
+
+  .result-input {
+    width: 35px;
+    height: 35px;
   }
 }

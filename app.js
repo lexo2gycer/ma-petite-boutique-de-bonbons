@@ -3,10 +3,7 @@
 
 /* ==========================================
    MA PETITE BOUTIQUE DE BONBONS
-   Version corrigée :
-   - Minimum 3 colonnes pour les centimes
-   - Virgule décimale correctement placée
-   - Retenues alignées sur leur colonne
+   Moteur de jeu - Emprunts corrigés
 ========================================== */
 
 const $ = id => document.getElementById(id);
@@ -103,26 +100,6 @@ function updateStars() {
   $("stars").textContent = state.stars;
 }
 
-/* ==========================================
-   OUTILS DES OPÉRATIONS POSÉES
-========================================== */
-
-/*
-  Tous les montants sont en centimes.
-
-  Exemple :
-  0,20 € = 20 centimes.
-
-  Pour les opérations en euros, il faut
-  toujours au moins trois colonnes :
-
-  0 | 2 | 0
-  € | dixièmes | centièmes
-
-  La virgule est placée avant les deux
-  dernières colonnes.
-*/
-
 function digitsOf(number, length) {
   return String(number).padStart(length, "0")
     .split("").map(Number);
@@ -135,29 +112,22 @@ function digitsOf(number, length) {
 function makeAdditionPlan(values) {
   const answer = values.reduce((a, b) => a + b, 0);
 
-  // Correction : minimum de 3 colonnes.
-  const maxLength = Math.max(
+  const length = Math.max(
     3,
     ...values.map(value => String(value).length),
     String(answer).length
   );
 
-  const rows = values.map(value =>
-    digitsOf(value, maxLength)
-  );
+  const rows = values.map(value => digitsOf(value, length));
+  const carries = Array(length).fill(0);
 
-  const carries = Array(maxLength).fill(0);
   let carry = 0;
 
-  for (let col = maxLength - 1; col >= 0; col--) {
-    // Retenue reçue de la colonne de droite.
+  for (let col = length - 1; col >= 0; col--) {
     carries[col] = carry;
 
     let sum = carry;
-
-    rows.forEach(row => {
-      sum += row[col];
-    });
+    rows.forEach(row => sum += row[col]);
 
     carry = Math.floor(sum / 10);
   }
@@ -166,7 +136,7 @@ function makeAdditionPlan(values) {
     rows,
     carries,
     answer,
-    length: maxLength,
+    length,
     operation: "addition"
   };
 }
@@ -178,7 +148,6 @@ function makeAdditionPlan(values) {
 function makeMultiplicationPlan(value, multiplier) {
   const answer = value * multiplier;
 
-  // Correction : minimum de 3 colonnes.
   const length = Math.max(
     3,
     String(value).length,
@@ -192,7 +161,6 @@ function makeMultiplicationPlan(value, multiplier) {
   let carry = 0;
 
   for (let col = length - 1; col >= 0; col--) {
-    // Retenue reçue de la colonne de droite.
     carries[col] = carry;
 
     const product = digits[col] * multiplier + carry;
@@ -214,12 +182,34 @@ function makeMultiplicationPlan(value, multiplier) {
 
 /* ==========================================
    PLAN DE SOUSTRACTION
+   CORRECTION DES EMPRUNTS EN CASCADE
 ========================================== */
+
+/*
+  Convention pédagogique :
+
+  Une case d'emprunt est placée au-dessus
+  de la colonne QUI PRÊTE à sa voisine droite.
+
+  Exemple : 5,00 - 4,14
+
+  Colonnes :      5 | 0 | 0
+  Emprunts :      1 | 1 | vide
+  Résultat :      0 | 8 | 6
+
+  Si une colonne intermédiaire contient 0,
+  l'emprunt remonte vers la colonne de gauche.
+
+  Exemple : 1000 - 1
+
+  Colonnes :      1 | 0 | 0 | 0
+  Emprunts :      1 | 1 | 1 | vide
+  Résultat :      0 | 9 | 9 | 9
+*/
 
 function makeSubtractionPlan(minuend, subtrahend) {
   const answer = minuend - subtrahend;
 
-  // Correction : minimum de 3 colonnes.
   const length = Math.max(
     3,
     String(minuend).length,
@@ -230,18 +220,26 @@ function makeSubtractionPlan(minuend, subtrahend) {
   const top = digitsOf(minuend, length);
   const bottom = digitsOf(subtrahend, length);
 
+  // Une case vaut 1 si cette colonne prête
+  // à la colonne située immédiatement à droite.
   const borrows = Array(length).fill(0);
-  let borrow = 0;
 
+  let borrowIn = 0;
+
+  // Calcul de droite à gauche.
   for (let col = length - 1; col >= 0; col--) {
-    const topDigit = top[col] - borrow;
+    const topDigitAfterBorrow = top[col] - borrowIn;
     const bottomDigit = bottom[col];
 
-    if (topDigit < bottomDigit) {
-      borrows[col] = 1;
-      borrow = 1;
+    if (topDigitAfterBorrow < bottomDigit) {
+      // La colonne de gauche doit prêter.
+      if (col > 0) {
+        borrows[col - 1] = 1;
+      }
+
+      borrowIn = 1;
     } else {
-      borrow = 0;
+      borrowIn = 0;
     }
   }
 
@@ -255,7 +253,7 @@ function makeSubtractionPlan(minuend, subtrahend) {
 }
 
 /* ==========================================
-   AFFICHAGE DES OPÉRATIONS EN COLONNES
+   AFFICHAGE DES OPÉRATIONS
 ========================================== */
 
 function makeCell(content = "", className = "") {
@@ -299,13 +297,13 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
   // Cases de retenue ou d'emprunt.
   for (let col = 0; col < length; col++) {
-    const isBorrow = plan.operation === "subtraction";
+    const isSubtraction = plan.operation === "subtraction";
 
-    const expected = isBorrow
+    const expected = isSubtraction
       ? plan.borrows[col]
       : plan.carries[col];
 
-    const label = isBorrow
+    const label = isSubtraction
       ? "Emprunt colonne " + (col + 1)
       : "Retenue colonne " + (col + 1);
 
@@ -317,7 +315,7 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
   html += `</div>`;
 
-  // Lignes de chiffres.
+  // Lignes des chiffres.
   plan.rows.forEach(row => {
     html += `<div class="math-row number-row">`;
 
@@ -327,7 +325,6 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
     html += `</div>`;
 
-    // Ligne du multiplicateur.
     if (plan.operation === "multiplication") {
       html += `<div class="math-row number-row multiplier-row">`;
 
@@ -344,10 +341,9 @@ function renderOperation(plan, containerId, answerInCents = false) {
     }
   });
 
-  // Barre de calcul.
   html += `<div class="math-rule"></div>`;
 
-  // Cases de saisie du résultat.
+  // Résultat.
   html += `<div class="math-row answer-row">`;
 
   answerDigits.forEach((digit, index) => {
@@ -370,8 +366,7 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
   container.innerHTML = html;
 
-  // Virgule avant les deux dernières colonnes.
-  // Ne pas l'ajouter sur les retenues ni sur le multiplicateur.
+  // Virgule avant les deux colonnes des centimes.
   if (answerInCents && length >= 3) {
     container.querySelectorAll(
       ".number-row:not(.multiplier-row), .answer-row"
@@ -386,7 +381,7 @@ function renderOperation(plan, containerId, answerInCents = false) {
 }
 
 /* ==========================================
-   VALIDATION DES RETENUES ET DES RÉSULTATS
+   VALIDATION DES OPÉRATIONS
 ========================================== */
 
 function checkOperation(plan, containerId) {
@@ -403,6 +398,7 @@ function checkOperation(plan, containerId) {
 
   let correct = true;
 
+  // Vérification des retenues ou des emprunts.
   const expectedValues = plan.operation === "subtraction"
     ? plan.borrows
     : plan.carries;
@@ -420,6 +416,7 @@ function checkOperation(plan, containerId) {
     if (!isCorrect) correct = false;
   });
 
+  // Vérification du résultat.
   const expectedDigits = digitsOf(
     plan.answer,
     resultInputs.length
@@ -810,7 +807,7 @@ $("check-change-calculation").addEventListener("click", () => {
 $("change-hint").addEventListener("click", () => {
   feedback(
     "change-feedback",
-    "Indice : dans une colonne, si le chiffre du haut est trop petit, tu dois emprunter à la colonne de gauche."
+    "Indice : si le chiffre du haut est trop petit, la colonne située à sa gauche doit lui prêter une dizaine. Si cette colonne contient zéro, il faut remonter encore à gauche."
   );
 });
 

@@ -1,0 +1,268 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4a6c8">
+  <title>Ma petite boutique de bonbons</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="app">
+
+    <!-- EN-TETE -->
+    <header class="topbar">
+      <div class="brand-icon">🍭</div>
+      <div class="brand-title">
+        <h1>Ma petite boutique</h1>
+        <p>de bonbons 🍬</p>
+      </div>
+      <div class="stars">
+        ⭐ <b id="stars">0</b>
+      </div>
+    </header>
+
+    <!-- ACCUEIL -->
+    <section id="home" class="screen">
+      <div class="welcome card">
+        <div class="welcome-illustration">🏠</div>
+        <p class="eyebrow">BIENVENUE !</p>
+        <h2>La boutique va ouvrir !</h2>
+        <p>Tes premiers clients t'attendent.</p>
+        <button id="start-shop" class="primary">
+          🍬 Ouvrir ma boutique
+        </button>
+      </div>
+
+      <div class="card">
+        <h3>🌸 Aujourd'hui, tu vas...</h3>
+        <ul>
+          <li>Choisir des bonbons</li>
+          <li>Préparer les commandes</li>
+          <li>Calculer les factures</li>
+          <li>Encaisser les clients</li>
+          <li>Rendre la monnaie</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- CATALOGUE -->
+    <section id="catalog" class="screen hidden">
+      <button class="back" data-go="home">← Accueil</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">LES GOURMANDISES</p>
+        <h2>🍭 Mon catalogue</h2>
+        <p>Choisis les bonbons de ton client.</p>
+      </div>
+
+      <div id="product-list" class="product-grid"></div>
+
+      <div class="sticky-bottom card">
+        <div>
+          <span>Articles sélectionnés</span>
+          <strong id="cart-count">0</strong>
+        </div>
+        <button id="to-cart" class="primary" disabled>
+          Voir mon panier →
+        </button>
+      </div>
+    </section>
+
+    <!-- PANIER -->
+    <section id="cart" class="screen hidden">
+      <button class="back" data-go="catalog">← Catalogue</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">COMMANDE DU CLIENT</p>
+        <h2>🧺 Mon panier</h2>
+        <p>Vérifie les articles et les quantités.</p>
+      </div>
+
+      <div id="cart-list" class="card"></div>
+
+      <div class="card">
+        <h3>Ta mission</h3>
+        <p>Tu vas calculer le prix de chaque ligne avec une multiplication posée.</p>
+        <button id="start-calculations" class="primary">
+          Préparer la facture →
+        </button>
+      </div>
+    </section>
+
+    <!-- CALCULS POSES -->
+    <section id="calculations" class="screen hidden">
+      <button class="back" data-go="cart">← Retour au panier</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">ATELIER DE CALCUL</p>
+        <h2>✏️ À toi de calculer !</h2>
+        <p id="calculation-progress">Calcul 1</p>
+      </div>
+
+      <div class="card">
+        <div id="calculation-product"></div>
+        <p id="calculation-instruction">
+          Pose ton opération et complète les cases.
+        </p>
+
+        <div id="calculation-work" class="calculation-work"></div>
+
+        <div id="calculation-feedback" class="feedback"
+             aria-live="polite"></div>
+
+        <button id="calculation-hint" class="secondary">
+          💡 Besoin d'un indice ?
+        </button>
+
+        <button id="check-calculation" class="primary">
+          Vérifier mon calcul
+        </button>
+      </div>
+    </section>
+
+    <!-- FACTURE -->
+    <section id="invoice" class="screen hidden">
+      <button class="back" data-go="calculations">← Retour</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">LA FACTURE</p>
+        <h2>🧾 Préparons l'addition</h2>
+      </div>
+
+      <div id="invoice-lines" class="card"></div>
+
+      <div class="card">
+        <h3>Addition finale</h3>
+        <p>Pose l'addition de tous les prix obtenus.</p>
+        <div id="invoice-work"></div>
+
+        <div id="invoice-feedback" class="feedback"
+             aria-live="polite"></div>
+
+        <button id="invoice-hint" class="secondary">
+          💡 Besoin d'un indice ?
+        </button>
+
+        <button id="check-invoice" class="primary">
+          Vérifier la facture
+        </button>
+      </div>
+    </section>
+
+    <!-- MODIFICATION DE COMMANDE -->
+    <section id="modification" class="screen hidden">
+      <button class="back" data-go="invoice">← Retour à la facture</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">UN CHANGEMENT !</p>
+        <h2>😮 Le client change d'avis</h2>
+        <p>Il souhaite ajouter ou retirer des bonbons.</p>
+      </div>
+
+      <div id="modification-content" class="card"></div>
+      <div id="modification-work" class="card"></div>
+
+      <button id="check-modification" class="primary">
+        Vérifier la modification
+      </button>
+    </section>
+
+    <!-- CAISSE -->
+    <section id="register" class="screen hidden">
+      <button class="back" data-go="invoice">← Retour à la facture</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">À LA CAISSE</p>
+        <h2>💶 Le client va payer</h2>
+      </div>
+
+      <div class="card">
+        <p>Montant à régler :</p>
+        <strong id="amount-due" class="big-amount">0,00 €</strong>
+        <p>Choisis les billets et les pièces donnés par le client.</p>
+        <div id="customer-wallet" class="money-grid"></div>
+        <div id="payment-total"></div>
+        <button id="check-payment" class="primary">
+          Vérifier le paiement
+        </button>
+      </div>
+    </section>
+
+    <!-- MONNAIE A RENDRE -->
+    <section id="change" class="screen hidden">
+      <button class="back" data-go="register">← Retour à la caisse</button>
+
+      <div class="page-heading">
+        <p class="eyebrow">DERNIÈRE MISSION</p>
+        <h2>🪙 Rendre la monnaie</h2>
+        <p>Combien dois-tu rendre au client ?</p>
+      </div>
+
+      <div class="card">
+        <div id="change-problem"></div>
+        <div id="change-work"></div>
+        <div id="change-feedback" class="feedback"
+             aria-live="polite"></div>
+
+        <button id="change-hint" class="secondary">
+          💡 Besoin d'un indice ?
+        </button>
+
+        <button id="check-change-calculation" class="primary">
+          Vérifier mon calcul
+        </button>
+      </div>
+
+      <div id="change-wallet" class="card">
+        <h3>Compose la monnaie à rendre</h3>
+        <div id="change-money-grid" class="money-grid"></div>
+        <div id="change-composition-total"></div>
+        <button id="check-change-composition" class="primary">
+          Vérifier la monnaie
+        </button>
+      </div>
+    </section>
+
+    <!-- FIN DE VENTE -->
+    <section id="result" class="screen hidden">
+      <div class="result-card card">
+        <div class="result-illustration">🎉🍬🎉</div>
+        <p class="eyebrow">BRAVO, COMMERÇANTE !</p>
+        <h2>Client servi !</h2>
+        <p>Tu as terminé cette vente.</p>
+        <button id="next-customer" class="primary">
+          Accueillir un autre client
+        </button>
+        <button id="finish-shop" class="secondary">
+          Fermer la boutique
+        </button>
+      </div>
+    </section>
+
+    <!-- BILAN DE FIN DE SESSION -->
+    <section id="daily-report" class="screen hidden">
+      <div class="result-card card">
+        <div class="result-illustration">🌸🏪🌸</div>
+        <p class="eyebrow">FIN DE LA JOURNÉE</p>
+        <h2>Bravo, commerçante !</h2>
+
+        <div id="daily-report-content"></div>
+
+        <button id="new-day" class="primary">
+          Ouvrir une nouvelle journée
+        </button>
+      </div>
+    </section>
+
+    <footer>
+      Fait avec 💗 pour apprendre en s'amusant
+    </footer>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

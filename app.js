@@ -3,8 +3,8 @@
 
 /* ==========================================
    MA PETITE BOUTIQUE DE BONBONS
-   Moteur de jeu - Version avec retenues
-   et emprunts réellement contrôlés
+   Moteur de jeu
+   Retenues alignées et montants décimaux
 ========================================== */
 
 const $ = id => document.getElementById(id);
@@ -42,6 +42,7 @@ const state = {
   total: 0,
   customerPayment: 0,
   change: 0,
+  changeComposition: 0,
   stars: 0,
   report: {
     revenue: 0,
@@ -100,25 +101,9 @@ function updateStars() {
   $("stars").textContent = state.stars;
 }
 
-function resetInputs(container) {
-  container.querySelectorAll("input").forEach(input => {
-    input.value = "";
-    input.classList.remove("wrong");
-  });
-}
-
 /* ==========================================
-   MOTEUR DES OPÉRATIONS POSÉES
+   OUTILS DES OPÉRATIONS POSÉES
 ========================================== */
-
-/*
-  Tous les montants sont travaillés en centimes.
-  Exemple : 3,25 € devient 325 centimes.
-
-  Les chiffres sont affichés en colonnes.
-  La virgule est placée entre les euros
-  et les centimes.
-*/
 
 function digitsOf(number, length) {
   return String(number).padStart(length, "0")
@@ -126,26 +111,27 @@ function digitsOf(number, length) {
 }
 
 function makeAdditionPlan(values) {
+  const answer = values.reduce((a, b) => a + b, 0);
+
   const maxLength = Math.max(
-    ...values.map(v => String(v).length)
+    ...values.map(value => String(value).length),
+    String(answer).length
   );
 
-  const rows = values.map(v => digitsOf(v, maxLength));
-  const carries = [];
+  const rows = values.map(value => digitsOf(value, maxLength));
+  const carries = Array(maxLength).fill(0);
+
   let carry = 0;
 
   for (let col = maxLength - 1; col >= 0; col--) {
-    let sum = carry;
+    // La retenue saisie est celle qui arrive dans cette colonne.
+    carries[col] = carry;
 
-    rows.forEach(row => {
-      sum += row[col];
-    });
+    let sum = carry;
+    rows.forEach(row => sum += row[col]);
 
     carry = Math.floor(sum / 10);
-    carries[col] = carry;
   }
-
-  const answer = values.reduce((a, b) => a + b, 0);
 
   return {
     rows,
@@ -157,22 +143,35 @@ function makeAdditionPlan(values) {
 }
 
 function makeMultiplicationPlan(value, multiplier) {
-  const digits = String(value).split("").map(Number);
-  const length = digits.length;
+  const answer = value * multiplier;
+
+  // On ajoute une colonne uniquement si le résultat en a besoin.
+  const length = Math.max(
+    String(value).length,
+    String(answer).length
+  );
+
+  const digits = digitsOf(value, length);
   const carries = Array(length).fill(0);
+  const resultDigits = Array(length).fill(0);
 
   let carry = 0;
 
   for (let col = length - 1; col >= 0; col--) {
-    const product = digits[col] * multiplier + carry;
-    carry = Math.floor(product / 10);
+    // Retenue reçue depuis la colonne située à droite.
     carries[col] = carry;
+
+    const product = digits[col] * multiplier + carry;
+
+    resultDigits[col] = product % 10;
+    carry = Math.floor(product / 10);
   }
 
   return {
     rows: [digits],
     carries,
-    answer: value * multiplier,
+    resultDigits,
+    answer,
     length,
     multiplier,
     operation: "multiplication"
@@ -180,9 +179,12 @@ function makeMultiplicationPlan(value, multiplier) {
 }
 
 function makeSubtractionPlan(minuend, subtrahend) {
+  const answer = minuend - subtrahend;
+
   const length = Math.max(
     String(minuend).length,
-    String(subtrahend).length
+    String(subtrahend).length,
+    String(answer).length
   );
 
   const top = digitsOf(minuend, length);
@@ -192,10 +194,10 @@ function makeSubtractionPlan(minuend, subtrahend) {
   let borrow = 0;
 
   for (let col = length - 1; col >= 0; col--) {
-    const a = top[col] - borrow;
-    const b = bottom[col];
+    const topDigit = top[col] - borrow;
+    const bottomDigit = bottom[col];
 
-    if (a < b) {
+    if (topDigit < bottomDigit) {
       borrows[col] = 1;
       borrow = 1;
     } else {
@@ -206,18 +208,18 @@ function makeSubtractionPlan(minuend, subtrahend) {
   return {
     rows: [top, bottom],
     borrows,
-    answer: minuend - subtrahend,
+    answer,
     length,
     operation: "subtraction"
   };
 }
 
 /* ==========================================
-   AFFICHAGE DES COLONNES
+   AFFICHAGE DES OPÉRATIONS EN COLONNES
 ========================================== */
 
-function makeCell(value = "", className = "") {
-  return `<div class="math-cell ${className}">${value}</div>`;
+function makeCell(content = "", className = "") {
+  return `<div class="math-cell ${className}">${content}</div>`;
 }
 
 function makeInput(className, label) {
@@ -235,68 +237,82 @@ function makeInput(className, label) {
   `;
 }
 
-function formatCentsDigits(number) {
-  const text = String(number).padStart(3, "0");
-  return text.slice(0, -2) + "," + text.slice(-2);
-}
-
 function renderOperation(plan, containerId, answerInCents = false) {
   const container = $(containerId);
+  if (!container) return;
+
   const length = plan.length;
+  const answerDigits = digitsOf(plan.answer, length);
+
+  const operationName =
+    plan.operation === "multiplication" ? "Pose ta multiplication" :
+    plan.operation === "addition" ? "Pose ton addition" :
+    "Pose ta soustraction";
 
   let html = `
     <div class="math-sheet">
-      <div class="math-caption">
-        ${plan.operation === "multiplication"
-          ? "Pose ta multiplication"
-          : plan.operation === "addition"
-          ? "Pose ton addition"
-          : "Pose ta soustraction"}
-      </div>
+      <div class="math-caption">${operationName}</div>
+
       <div class="math-grid" style="--cols:${length}">
+        <div class="math-row carry-row">
   `;
 
-  // Ligne des retenues ou des emprunts
-  html += `<div class="math-row carry-row">`;
-
+  // Cases de retenue ou d'emprunt.
   for (let col = 0; col < length; col++) {
-    const isNeeded = plan.operation === "subtraction"
-      ? plan.borrows[col] === 1
-      : plan.carries[col] > 0;
+    const isBorrow = plan.operation === "subtraction";
+    const expected = isBorrow
+      ? plan.borrows[col]
+      : plan.carries[col];
+
+    const label = isBorrow
+      ? "Emprunt colonne " + (col + 1)
+      : "Retenue colonne " + (col + 1);
 
     html += makeCell(
-      makeInput("carry-input", "Retenue ou emprunt colonne " + (col + 1)),
-      isNeeded ? "carry-needed" : "carry-empty"
+      makeInput("carry-input", label),
+      expected ? "carry-needed" : "carry-empty"
     );
   }
 
   html += `</div>`;
 
-  // Chiffres des opérations
+  // Première ligne de chiffres.
   plan.rows.forEach((row, rowIndex) => {
     html += `<div class="math-row number-row">`;
 
-    row.forEach((digit, col) => {
-      html += makeCell(digit);
+    row.forEach(digit => {
+      html += makeCell(String(digit));
     });
 
     html += `</div>`;
 
-    if (rowIndex === 0 && plan.operation === "multiplication") {
-      html += `<div class="math-row number-row multiplier-row">`;
-      for (let col = 0; col < length - 1; col++) {
-        html += makeCell("");
+    // Deuxième ligne de l'opération.
+    if (
+      plan.operation === "multiplication" ||
+      (plan.operation === "addition" && rowIndex < plan.rows.length - 1) ||
+      (plan.operation === "subtraction" && rowIndex < plan.rows.length - 1)
+    ) {
+      if (plan.operation === "multiplication") {
+        html += `<div class="math-row number-row multiplier-row">`;
+
+        row.forEach((digit, col) => {
+          const symbol = col === 0 ? "×" : "";
+          const number = col === length - 1
+            ? String(plan.multiplier)
+            : "";
+
+          html += makeCell(symbol + number);
+        });
+
+        html += `</div>`;
       }
-      html += makeCell("× " + plan.multiplier);
-      html += `</div>`;
     }
   });
 
+  // Barre de calcul.
   html += `<div class="math-rule"></div>`;
 
-  // Résultat
-  const answerDigits = digitsOf(plan.answer, length + 1);
-
+  // Cases de saisie du résultat.
   html += `<div class="math-row answer-row">`;
 
   answerDigits.forEach((digit, index) => {
@@ -305,30 +321,38 @@ function renderOperation(plan, containerId, answerInCents = false) {
     );
   });
 
-  html += `</div>`;
-
-  html += `</div>`;
+  html += `</div></div>`;
 
   if (answerInCents) {
-    html += `<p class="math-decimal-note">
-      Les deux dernières colonnes représentent les centimes.
-      La virgule se place avant ces deux colonnes.
-    </p>`;
+    html += `
+      <p class="math-decimal-note">
+        La virgule sépare les euros et les centimes.
+      </p>
+    `;
   }
 
   html += `</div>`;
 
   container.innerHTML = html;
 
-  // Ajouter un affichage spécifique de la virgule
-  if (answerInCents) {
-    const rows = container.querySelectorAll(".number-row, .answer-row");
-    rows.forEach(row => {
+  // Positionner la virgule avant les deux colonnes des centimes.
+  if (answerInCents && length >= 3) {
+    container.querySelectorAll(
+      ".number-row, .answer-row"
+    ).forEach(row => {
       const cells = row.querySelectorAll(".math-cell");
+
       if (cells.length >= 3) {
         cells[cells.length - 2].classList.add("decimal-before");
       }
     });
+  }
+
+  // Placer le symbole opératoire dans la première colonne.
+  const firstNumberRow = container.querySelector(".number-row");
+
+  if (firstNumberRow && plan.operation === "subtraction") {
+    firstNumberRow.classList.add("subtraction-row");
   }
 }
 
@@ -338,6 +362,7 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
 function checkOperation(plan, containerId) {
   const container = $(containerId);
+  if (!container) return false;
 
   const carryInputs = [
     ...container.querySelectorAll(".carry-input")
@@ -349,29 +374,21 @@ function checkOperation(plan, containerId) {
 
   let correct = true;
 
-  const expectedCarries = plan.operation === "subtraction"
+  const expectedValues = plan.operation === "subtraction"
     ? plan.borrows
     : plan.carries;
 
   carryInputs.forEach((input, index) => {
-    const expected = expectedCarries[index] || 0;
+    const expected = expectedValues[index] || 0;
     const entered = input.value.trim();
 
-    if (expected === 0) {
-      if (entered !== "") {
-        input.classList.add("wrong");
-        correct = false;
-      } else {
-        input.classList.remove("wrong");
-      }
-    } else {
-      if (Number(entered) !== expected) {
-        input.classList.add("wrong");
-        correct = false;
-      } else {
-        input.classList.remove("wrong");
-      }
-    }
+    const isCorrect = expected === 0
+      ? entered === ""
+      : Number(entered) === expected;
+
+    input.classList.toggle("wrong", !isCorrect);
+
+    if (!isCorrect) correct = false;
   });
 
   const expectedDigits = digitsOf(
@@ -380,12 +397,12 @@ function checkOperation(plan, containerId) {
   );
 
   resultInputs.forEach((input, index) => {
-    if (input.value.trim() !== String(expectedDigits[index])) {
-      input.classList.add("wrong");
-      correct = false;
-    } else {
-      input.classList.remove("wrong");
-    }
+    const isCorrect =
+      input.value.trim() === String(expectedDigits[index]);
+
+    input.classList.toggle("wrong", !isCorrect);
+
+    if (!isCorrect) correct = false;
   });
 
   return correct;
@@ -888,6 +905,7 @@ $("new-day").addEventListener("click", () => {
   state.total = 0;
   state.customerPayment = 0;
   state.change = 0;
+  state.changeComposition = 0;
   state.stars = 0;
 
   updateStars();

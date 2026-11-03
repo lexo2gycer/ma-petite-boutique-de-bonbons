@@ -335,72 +335,37 @@ function readMoneyAnswer(id) {
 }
 
 function checkDigitAnswer(containerId, expected) {
-  const inputs = document.querySelectorAll(`#${containerId} .answer-digit`);
-  const expectedText = euros(expected).replace(" €", "");
-  let index = 0;
-  let entered = "";
+  const inputs = document.querySelectorAll(
+    `#${containerId} .answer-digit`
+  );
 
-  inputs.forEach(input => {
-    const char = expectedText[index++];
-    entered += input.value.trim();
-    if (char !== undefined && input.value.trim() !== char) {
+  // On conserve uniquement les chiffres.
+  // La virgule est déjà représentée visuellement.
+  const expectedDigits = String(expected)
+    .padStart(1, "0")
+    .split("")
+    .filter(char => /[0-9]/.test(char));
+
+  if (inputs.length !== expectedDigits.length) {
+    return false;
+  }
+
+  let correct = true;
+
+  inputs.forEach((input, index) => {
+    const entered = input.value.trim();
+    const expectedDigit = expectedDigits[index];
+
+    if (entered !== expectedDigit) {
       input.classList.add("wrong");
+      correct = false;
     } else {
       input.classList.remove("wrong");
     }
   });
 
-  return entered === expectedText;
+  return correct;
 }
-
-$("check-calculation").addEventListener("click", () => {
-  if (!currentExercise) return;
-
-  const correct = checkDigitAnswer(
-    "calculation-work",
-    currentExercise.answer
-  );
-
-  if (!correct) {
-    setFeedback(
-      "calculation-feedback",
-      "Pas encore ! Relis ton opération et réessaie. 💪",
-      "error"
-    );
-    return;
-  }
-
-  setFeedback(
-    "calculation-feedback",
-    "Bravo ! Ton calcul est juste ! ⭐",
-    "success"
-  );
-
-  state.lineResults.push({
-    product: currentExercise.product,
-    total: currentExercise.answer
-  });
-
-  state.stars++;
-  state.report.challenges++;
-  updateStars();
-
-  $("check-calculation").disabled = true;
-
-  setTimeout(() => {
-    $("check-calculation").disabled = false;
-    state.calculationIndex++;
-    startLineCalculation();
-  }, 900);
-});
-
-$("calculation-hint").addEventListener("click", () => {
-  setFeedback(
-    "calculation-feedback",
-    "Indice : commence par les centimes. Pense aux retenues lorsque le résultat dépasse 9.",
-    ""
-  );
-});
 
 /* =========================================
    FACTURE ET ADDITION

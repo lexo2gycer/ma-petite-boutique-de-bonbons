@@ -3,8 +3,10 @@
 
 /* ==========================================
    MA PETITE BOUTIQUE DE BONBONS
-   Moteur de jeu
-   Retenues alignées et montants décimaux
+   Version corrigée :
+   - Minimum 3 colonnes pour les centimes
+   - Virgule décimale correctement placée
+   - Retenues alignées sur leur colonne
 ========================================== */
 
 const $ = id => document.getElementById(id);
@@ -105,30 +107,57 @@ function updateStars() {
    OUTILS DES OPÉRATIONS POSÉES
 ========================================== */
 
+/*
+  Tous les montants sont en centimes.
+
+  Exemple :
+  0,20 € = 20 centimes.
+
+  Pour les opérations en euros, il faut
+  toujours au moins trois colonnes :
+
+  0 | 2 | 0
+  € | dixièmes | centièmes
+
+  La virgule est placée avant les deux
+  dernières colonnes.
+*/
+
 function digitsOf(number, length) {
   return String(number).padStart(length, "0")
     .split("").map(Number);
 }
 
+/* ==========================================
+   PLAN D'ADDITION
+========================================== */
+
 function makeAdditionPlan(values) {
   const answer = values.reduce((a, b) => a + b, 0);
 
+  // Correction : minimum de 3 colonnes.
   const maxLength = Math.max(
+    3,
     ...values.map(value => String(value).length),
     String(answer).length
   );
 
-  const rows = values.map(value => digitsOf(value, maxLength));
-  const carries = Array(maxLength).fill(0);
+  const rows = values.map(value =>
+    digitsOf(value, maxLength)
+  );
 
+  const carries = Array(maxLength).fill(0);
   let carry = 0;
 
   for (let col = maxLength - 1; col >= 0; col--) {
-    // La retenue saisie est celle qui arrive dans cette colonne.
+    // Retenue reçue de la colonne de droite.
     carries[col] = carry;
 
     let sum = carry;
-    rows.forEach(row => sum += row[col]);
+
+    rows.forEach(row => {
+      sum += row[col];
+    });
 
     carry = Math.floor(sum / 10);
   }
@@ -142,11 +171,16 @@ function makeAdditionPlan(values) {
   };
 }
 
+/* ==========================================
+   PLAN DE MULTIPLICATION
+========================================== */
+
 function makeMultiplicationPlan(value, multiplier) {
   const answer = value * multiplier;
 
-  // On ajoute une colonne uniquement si le résultat en a besoin.
+  // Correction : minimum de 3 colonnes.
   const length = Math.max(
+    3,
     String(value).length,
     String(answer).length
   );
@@ -158,7 +192,7 @@ function makeMultiplicationPlan(value, multiplier) {
   let carry = 0;
 
   for (let col = length - 1; col >= 0; col--) {
-    // Retenue reçue depuis la colonne située à droite.
+    // Retenue reçue de la colonne de droite.
     carries[col] = carry;
 
     const product = digits[col] * multiplier + carry;
@@ -178,10 +212,16 @@ function makeMultiplicationPlan(value, multiplier) {
   };
 }
 
+/* ==========================================
+   PLAN DE SOUSTRACTION
+========================================== */
+
 function makeSubtractionPlan(minuend, subtrahend) {
   const answer = minuend - subtrahend;
 
+  // Correction : minimum de 3 colonnes.
   const length = Math.max(
+    3,
     String(minuend).length,
     String(subtrahend).length,
     String(answer).length
@@ -260,6 +300,7 @@ function renderOperation(plan, containerId, answerInCents = false) {
   // Cases de retenue ou d'emprunt.
   for (let col = 0; col < length; col++) {
     const isBorrow = plan.operation === "subtraction";
+
     const expected = isBorrow
       ? plan.borrows[col]
       : plan.carries[col];
@@ -276,8 +317,8 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
   html += `</div>`;
 
-  // Première ligne de chiffres.
-  plan.rows.forEach((row, rowIndex) => {
+  // Lignes de chiffres.
+  plan.rows.forEach(row => {
     html += `<div class="math-row number-row">`;
 
     row.forEach(digit => {
@@ -286,26 +327,20 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
     html += `</div>`;
 
-    // Deuxième ligne de l'opération.
-    if (
-      plan.operation === "multiplication" ||
-      (plan.operation === "addition" && rowIndex < plan.rows.length - 1) ||
-      (plan.operation === "subtraction" && rowIndex < plan.rows.length - 1)
-    ) {
-      if (plan.operation === "multiplication") {
-        html += `<div class="math-row number-row multiplier-row">`;
+    // Ligne du multiplicateur.
+    if (plan.operation === "multiplication") {
+      html += `<div class="math-row number-row multiplier-row">`;
 
-        row.forEach((digit, col) => {
-          const symbol = col === 0 ? "×" : "";
-          const number = col === length - 1
-            ? String(plan.multiplier)
-            : "";
+      row.forEach((digit, col) => {
+        const symbol = col === 0 ? "×" : "";
+        const number = col === length - 1
+          ? String(plan.multiplier)
+          : "";
 
-          html += makeCell(symbol + number);
-        });
+        html += makeCell(symbol + number);
+      });
 
-        html += `</div>`;
-      }
+      html += `</div>`;
     }
   });
 
@@ -335,10 +370,11 @@ function renderOperation(plan, containerId, answerInCents = false) {
 
   container.innerHTML = html;
 
-  // Positionner la virgule avant les deux colonnes des centimes.
+  // Virgule avant les deux dernières colonnes.
+  // Ne pas l'ajouter sur les retenues ni sur le multiplicateur.
   if (answerInCents && length >= 3) {
     container.querySelectorAll(
-      ".number-row, .answer-row"
+      ".number-row:not(.multiplier-row), .answer-row"
     ).forEach(row => {
       const cells = row.querySelectorAll(".math-cell");
 
@@ -346,13 +382,6 @@ function renderOperation(plan, containerId, answerInCents = false) {
         cells[cells.length - 2].classList.add("decimal-before");
       }
     });
-  }
-
-  // Placer le symbole opératoire dans la première colonne.
-  const firstNumberRow = container.querySelector(".number-row");
-
-  if (firstNumberRow && plan.operation === "subtraction") {
-    firstNumberRow.classList.add("subtraction-row");
   }
 }
 
@@ -456,7 +485,9 @@ function renderCatalog() {
     button.addEventListener("click", () => {
       const id = Number(button.dataset.plus);
       const quantity = state.cart[id] || 0;
+
       if (quantity < 5) state.cart[id] = quantity + 1;
+
       renderCatalog();
     });
   });
@@ -474,12 +505,14 @@ function renderCatalog() {
   });
 
   $("cart-count").textContent = selectedCount();
+
   $("to-cart").disabled =
     selectedCount() === 0 || selectedProducts().length > 4;
 }
 
 $("to-cart").addEventListener("click", () => {
   if (!selectedProducts().length) return;
+
   renderCart();
   showScreen("cart");
 });
@@ -614,10 +647,12 @@ function renderInvoice() {
   state.lineResults.forEach(line => {
     const row = document.createElement("div");
     row.className = "invoice-line";
+
     row.innerHTML = `
       <span>${line.product.emoji} ${line.product.name}</span>
       <strong>${euros(line.total)}</strong>
     `;
+
     container.appendChild(row);
   });
 
@@ -654,6 +689,7 @@ $("check-invoice").addEventListener("click", () => {
   );
 
   $("amount-due").textContent = euros(state.total);
+
   renderCustomerWallet();
   showScreen("register");
 });
@@ -680,10 +716,14 @@ function renderCustomerWallet() {
     button.textContent = money.label;
 
     button.addEventListener("click", () => {
-      walletSelections[index] = (walletSelections[index] || 0) + 1;
+      walletSelections[index] =
+        (walletSelections[index] || 0) + 1;
+
       button.classList.add("selected");
+
       button.textContent =
         `${money.label} × ${walletSelections[index]}`;
+
       updatePaymentTotal();
     });
 
@@ -789,10 +829,14 @@ function renderChangeWallet() {
     button.textContent = money.label;
 
     button.addEventListener("click", () => {
-      changeSelections[index] = (changeSelections[index] || 0) + 1;
+      changeSelections[index] =
+        (changeSelections[index] || 0) + 1;
+
       button.classList.add("selected");
+
       button.textContent =
         `${money.label} × ${changeSelections[index]}`;
+
       updateChangeTotal();
     });
 
